@@ -1,25 +1,44 @@
 package com.devopslab.application.controller;
 
+import com.devopslab.application.config.ApplicationProperties;
 import com.devopslab.application.dto.ApplicationInfoDTO;
-import org.springframework.beans.factory.annotation.Value;
+import com.devopslab.application.dto.HelloResponseDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ApplicationController {
 
-    @Value("${spring.application.name}")
-    private String applicationName;
+    private static final Logger logger =
+            LoggerFactory.getLogger(ApplicationController.class);
 
-    @GetMapping("/")
-    public ApplicationInfoDTO index() {
+    private final ApplicationProperties properties;
 
-        return new ApplicationInfoDTO(
-                applicationName,
-                "0.0.1-SNAPSHOT",
-                "local"
-        );
-
+    public ApplicationController(ApplicationProperties properties) {
+        this.properties = properties;
     }
 
+    @GetMapping("/")
+    public ApplicationInfoDTO info() {
+
+        logger.info("GET /");
+
+        return new ApplicationInfoDTO(
+                properties.name(),
+                properties.version(),
+                properties.environment()
+        );
+    }
+
+    @GetMapping("/hello")
+    public HelloResponseDTO hello() {
+
+        logger.info("GET /hello");
+
+        return new HelloResponseDTO(
+                "Welcome to DevOps Lab!"
+        );
+    }
 }
