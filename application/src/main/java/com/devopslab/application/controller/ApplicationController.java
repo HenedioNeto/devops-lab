@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ApplicationController {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(ApplicationController.class);
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationController.class);
 
     private final ApplicationProperties properties;
 
@@ -21,9 +20,9 @@ public class ApplicationController {
     }
 
     @GetMapping("/")
-    public ApplicationInfoDTO info() {
+    public ApplicationInfoDTO applicationInfo() {
 
-        logger.info("GET /");
+        logger.info("Application information requested");
 
         return new ApplicationInfoDTO(
                 properties.name(),
@@ -35,7 +34,7 @@ public class ApplicationController {
     @GetMapping("/hello")
     public HelloResponseDTO hello() {
 
-        logger.info("GET /hello");
+        logger.info("Hello endpoint requested");
 
         return new HelloResponseDTO(
                 "Welcome to DevOps Lab!"
