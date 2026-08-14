@@ -1,9 +1,7 @@
 services:
 
   application:
-    build:
-      context: ./application
-      dockerfile: Dockerfile
+    image: ghcr.io/henedioneto/devops-lab:latest
 
     container_name: devops-lab
 
@@ -15,12 +13,18 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
+    depends_on:
+      redis:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
+
     volumes:
       - redis-data:/data
+
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,6 +39,9 @@ services:
       - ./monitoring/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
 
+    depends_on:
+      - application
+
   grafana:
     image: grafana/grafana:12.1.1
 
@@ -43,6 +50,9 @@ services:
 
     volumes:
       - grafana-data:/var/lib/grafana
+
+    depends_on:
+      - prometheus
 
 volumes:
   redis-data:
