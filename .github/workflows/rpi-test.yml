@@ -1,0 +1,23 @@
+name: RPi Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-rpi:
+    runs-on: self-hosted
+
+    steps:
+      - name: Identificar ambiente
+        run: |
+          echo "Hostname:"
+          hostname
+
+          echo "Sistema:"
+          uname -a
+
+          echo "Docker:"
+          docker --version
+
+          echo "Docker Compose:"
+          docker compose version
