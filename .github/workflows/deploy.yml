@@ -13,6 +13,10 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: Show deployment SHA
+        run: |
+          echo "SHA: ${{ github.event.workflow_run.head_sha }}"
+
       - name: Deploy application
         run: |
           cd ~/devops-lab
@@ -25,10 +29,10 @@ jobs:
             if curl --fail http://localhost:8080/actuator/health; then
               exit 0
             fi
-          
+
             echo "Aguardando aplicação..."
             sleep 5
           done
-          
+
           echo "Aplicação não ficou saudável"
           exit 1
