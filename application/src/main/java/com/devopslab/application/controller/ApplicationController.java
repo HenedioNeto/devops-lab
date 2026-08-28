@@ -31,8 +31,6 @@ public class ApplicationController {
         );
     }
 
-    //a
-
     @GetMapping("/hello")
     public HelloResponseDTO hello() {
 
