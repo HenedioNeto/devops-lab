@@ -17,6 +17,10 @@ public class ApplicationController {
 
     public ApplicationController(ApplicationProperties properties) {
         this.properties = properties;
+
+        if (true) {
+            throw new RuntimeException("TESTE DE ROLLBACK");
+        }
     }
 
     @GetMapping("/")
