@@ -13,20 +13,37 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Show deployment SHA
-        run: |
-          echo "SHA: ${{ github.event.workflow_run.head_sha }}"
-
       - name: Deploy application
         run: |
           cd ~/devops-lab
+
+          NEW_VERSION="${{ github.event.workflow_run.head_sha }}"
+
+          echo "Nova versão: $NEW_VERSION"
+
+          if [ -f .deployed-version ]; then
+            OLD_VERSION=$(cat .deployed-version)
+            echo "Versão anterior: $OLD_VERSION"
+          else
+            OLD_VERSION=""
+            echo "Nenhuma versão anterior registrada."
+          fi
+
+          echo "$OLD_VERSION" > .previous-version
+
+          sed -i "s/^APP_VERSION=.*/APP_VERSION=$NEW_VERSION/" .env
+
           docker compose pull
           docker compose up -d
 
       - name: Health check
         run: |
+          cd ~/devops-lab
+
           for i in {1..10}; do
             if curl --fail http://localhost:8080/actuator/health; then
+              echo "Aplicação saudável."
+              echo "${{ github.event.workflow_run.head_sha }}" > .deployed-version
               exit 0
             fi
 
@@ -34,5 +51,5 @@ jobs:
             sleep 5
           done
 
-          echo "Aplicação não ficou saudável"
+          echo "Aplicação não ficou saudável."
           exit 1
