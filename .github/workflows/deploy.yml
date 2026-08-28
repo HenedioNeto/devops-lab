@@ -16,6 +16,8 @@ jobs:
       - name: Deploy application
         run: |
           cd ~/devops-lab
+          
+          git pull
 
           NEW_VERSION="${{ github.event.workflow_run.head_sha }}"
 
