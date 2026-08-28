@@ -33,17 +33,19 @@ jobs:
 
           sed -i "s/^APP_VERSION=.*/APP_VERSION=$NEW_VERSION/" .env
 
+          echo "Atualizando para versão: $NEW_VERSION"
+
           docker compose pull
           docker compose up -d
 
       - name: Health check
+        id: health-check
         run: |
           cd ~/devops-lab
 
           for i in {1..10}; do
             if curl --fail http://localhost:8080/actuator/health; then
               echo "Aplicação saudável."
-              echo "${{ github.event.workflow_run.head_sha }}" > .deployed-version
               exit 0
             fi
 
@@ -52,4 +54,44 @@ jobs:
           done
 
           echo "Aplicação não ficou saudável."
+          exit 1
+
+      - name: Rollback
+        if: ${{ failure() }}
+        run: |
+          cd ~/devops-lab
+
+          if [ ! -s .previous-version ]; then
+            echo "Não existe versão anterior para rollback."
+            exit 1
+          fi
+
+          OLD_VERSION=$(cat .previous-version)
+
+          echo "Iniciando rollback para: $OLD_VERSION"
+
+          sed -i "s/^APP_VERSION=.*/APP_VERSION=$OLD_VERSION/" .env
+
+          docker compose pull
+          docker compose up -d
+
+      - name: Verify rollback
+        if: ${{ failure() }}
+        run: |
+          cd ~/devops-lab
+          
+          OLD_VERSION=$(cat .previous-version)
+
+          for i in {1..10}; do
+            if curl --fail http://localhost:8080/actuator/health; then
+              echo "Rollback concluído. Aplicação saudável."
+              echo "$OLD_VERSION" > .deployed-version
+              exit 0
+            fi
+
+            echo "Aguardando aplicação após rollback..."
+            sleep 5
+          done
+
+          echo "Rollback falhou."
           exit 1
