@@ -18,3 +18,17 @@ jobs:
           cd ~/devops-lab
           docker compose pull
           docker compose up -d
+
+      - name: Health check
+        run: |
+          for i in {1..10}; do
+            if curl --fail http://localhost:8080/actuator/health; then
+              exit 0
+            fi
+          
+            echo "Aguardando aplicação..."
+            sleep 5
+          done
+          
+          echo "Aplicação não ficou saudável"
+          exit 1
