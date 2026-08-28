@@ -13,11 +13,24 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Deploy application
+
+      # --------------------------------------------------
+      # 1. Atualiza o projeto no Raspberry Pi
+      # --------------------------------------------------
+
+      - name: Update repository
         run: |
           cd ~/devops-lab
-          
+
           git pull
+
+      # --------------------------------------------------
+      # 2. Salva a versão atual e define a nova versão
+      # --------------------------------------------------
+
+      - name: Prepare deployment
+        run: |
+          cd ~/devops-lab
 
           NEW_VERSION="${{ github.event.workflow_run.head_sha }}"
 
@@ -25,27 +38,42 @@ jobs:
 
           if [ -f .deployed-version ]; then
             OLD_VERSION=$(cat .deployed-version)
-            echo "Versão anterior: $OLD_VERSION"
-          else
-            OLD_VERSION=""
-            echo "Nenhuma versão anterior registrada."
-          fi
 
-          echo "$OLD_VERSION" > .previous-version
+            echo "Versão anterior: $OLD_VERSION"
+
+            echo "$OLD_VERSION" > .previous-version
+          else
+            echo "Nenhuma versão anterior registrada."
+            rm -f .previous-version
+          fi
 
           sed -i "s/^APP_VERSION=.*/APP_VERSION=$NEW_VERSION/" .env
 
-          echo "Atualizando para versão: $NEW_VERSION"
+      # --------------------------------------------------
+      # 3. Faz o deploy
+      # --------------------------------------------------
+
+      - name: Deploy application
+        run: |
+          cd ~/devops-lab
+
+          echo "Iniciando deploy..."
 
           docker compose pull
           docker compose up -d
 
+      # --------------------------------------------------
+      # 4. Verifica se a nova versão está saudável
+      # --------------------------------------------------
+
       - name: Health check
-        id: health-check
+        id: health
+        continue-on-error: true
         run: |
           cd ~/devops-lab
 
           for i in {1..10}; do
+
             if curl --fail http://localhost:8080/actuator/health; then
               echo "Aplicação saudável."
               exit 0
@@ -53,13 +81,18 @@ jobs:
 
             echo "Aguardando aplicação..."
             sleep 5
+
           done
 
           echo "Aplicação não ficou saudável."
           exit 1
 
+      # --------------------------------------------------
+      # 5. Rollback caso o health check falhe
+      # --------------------------------------------------
+
       - name: Rollback
-        if: ${{ failure() }}
+        if: steps.health.outcome == 'failure'
         run: |
           cd ~/devops-lab
 
@@ -70,30 +103,55 @@ jobs:
 
           OLD_VERSION=$(cat .previous-version)
 
-          echo "Iniciando rollback para: $OLD_VERSION"
+          echo "Rollback para versão: $OLD_VERSION"
 
           sed -i "s/^APP_VERSION=.*/APP_VERSION=$OLD_VERSION/" .env
 
           docker compose pull
           docker compose up -d
 
+      # --------------------------------------------------
+      # 6. Verifica se o rollback funcionou
+      # --------------------------------------------------
+
       - name: Verify rollback
-        if: ${{ failure() }}
+        if: steps.health.outcome == 'failure'
         run: |
           cd ~/devops-lab
-          
+
           OLD_VERSION=$(cat .previous-version)
 
           for i in {1..10}; do
+
             if curl --fail http://localhost:8080/actuator/health; then
-              echo "Rollback concluído. Aplicação saudável."
+
+              echo "Rollback concluído."
+              echo "Versão restaurada: $OLD_VERSION"
+
               echo "$OLD_VERSION" > .deployed-version
+
               exit 0
             fi
 
             echo "Aguardando aplicação após rollback..."
             sleep 5
+
           done
 
           echo "Rollback falhou."
           exit 1
+
+      # --------------------------------------------------
+      # 7. Registra a nova versão se o deploy foi bem-sucedido
+      # --------------------------------------------------
+
+      - name: Register deployed version
+        if: steps.health.outcome == 'success'
+        run: |
+          cd ~/devops-lab
+
+          NEW_VERSION=$(grep '^APP_VERSION=' .env | cut -d '=' -f2)
+
+          echo "$NEW_VERSION" > .deployed-version
+
+          echo "Versão implantada: $NEW_VERSION"
